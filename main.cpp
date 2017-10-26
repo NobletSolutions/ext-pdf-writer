@@ -7,6 +7,37 @@
 #include <PDFWriter/PDFObject.h>
 #include <PDFWriter/AbstractContentContext.h>
 
+class PdfText : public Php::Base {
+private:
+    Php::Value x;
+    Php::Value y;
+    Php::Value text;
+public:
+    PdfText() = default;
+
+    void __construct(Php::Parameters &params)
+    {
+//        Php::out << "x: " << params[0] << std::endl;
+//        Php::out << "y: " << params[1] << std::endl;
+//        Php::out << "Text: " << params[2] << std::endl;
+        x = params[0];
+        y = params[1];
+        text = params[2];
+    }
+
+    Php::Value getX() {
+        return x;
+    }
+
+    Php::Value getY() {
+        return y;
+    }
+
+    Php::Value getText() {
+        return text;
+    }
+};
+
 class PdfWriter : public Php::Base {
 private:
     PDFWriter writer;
@@ -21,79 +52,56 @@ public:
 
     void __construct(Php::Parameters &params)
     {
-        Php::out << "InputFile" << params[0] << std::endl;
-        Php::out << "OutputFile" << params[1] << std::endl;
+//        Php::out << "InputFile" << params[0] << std::endl;
+//        Php::out << "OutputFile" << params[1] << std::endl;
 
         writer.ModifyPDF(params[0], ePDFVersion14, params[1]);
     }
 
     void writeTextToPage(Php::Parameters &params)
     {
-        Php::out << "x: " << params[0] << std::endl;
-        Php::out << "y: " << params[1] << std::endl;
-        Php::out << "Text: " << params[2] << std::endl;
-
-        PDFModifiedPage thePage(&writer,0,true);
-        AbstractContentContext* contentContext = thePage.StartContentContext();
-
-        PDFUsedFont * font = writer.GetFontForFile("./arial.ttf",0);
-        if(!font) {
-            Php::out << "Failed to retrieve font ./arial.ttf" << std::endl;
+        if (params[0] < 0) {
+//            Php::out << "Page Is Negative!" << std::endl;
             return;
         }
-        AbstractContentContext::TextOptions opt(font,12,AbstractContentContext::eRGB, 0);
-        contentContext->WriteText((double)params[0], (double)params[1], params[2], opt);
-        contentContext->WriteText((double)params[0], (double)params[1]-100, params[2], opt);
-        contentContext->WriteText((double)params[0], (double)params[1]-200, params[2], opt);
-        thePage.EndContentContext();
-        thePage.WritePage();
-        Php::out << "HERE: " << __LINE__ << std::endl;
-/*
 
-        if(params[0] != pageNum) {
-            Php::out << "HERE: " << __LINE__ << std::endl;
+//        Php::out << "Page: " << params[0] << std::endl;
+//        Php::out << "Count: " << params[1].size() << std::endl;
+//        for (auto &iter : params[1]) {
+//            PdfText *obj = (PdfText *)iter.second.implementation();
+//
+//            Php::out << "Loop: " << iter.first << std::endl;
+//            Php::out << "   x: " << obj->getX() << std::endl;
+//            Php::out << "   y: " << obj->getY() << std::endl;
+//            Php::out << "   t: " << obj->getText() << std::endl;
+//        }
 
-            if (modifiedPage != NULL){
-                modifiedPage->EndContentContext();
-                modifiedPage->WritePage();
-                Php::out << "HERE: " << __LINE__ << std::endl;
-                delete modifiedPage;
-            }
-            Php::out << "HERE: " << __LINE__ << std::endl;
+        if (params[1].size() > 0) {
+            PDFModifiedPage thePage(&writer, static_cast<double>(params[0]), true);
+            AbstractContentContext* contentContext = thePage.StartContentContext();
 
-            PDFModifiedPage thePage(&writer,(int)params[0],true);
-            modifiedPage = &thePage;
-
-            Php::out << "HERE: " << __LINE__ << std::endl;
-            if (contentContext != NULL) {
-                delete contentContext;
+            PDFUsedFont * font = writer.GetFontForFile("./arial.ttf",0);
+            if (!font) {
+//                Php::out << "Failed to retrieve font ./arial.ttf" << std::endl;
+                return;
             }
 
-            Php::out << "HERE: " << __LINE__ << std::endl;
-            contentContext = modifiedPage->StartContentContext();
+            AbstractContentContext::TextOptions opt(font,12,AbstractContentContext::eRGB, 0);
+            for (auto &iter : params[1]) {
+                PdfText *obj = (PdfText *)iter.second.implementation();
+                contentContext->WriteText((double)obj->getX(), (double)obj->getY(), obj->getText(), opt);
+            }
 
-            pageNum = params[0];
+            thePage.EndContentContext();
+            thePage.WritePage();
         }
-        Php::out << "HERE: " << __LINE__ << std::endl;
 
-        AbstractContentContext::TextOptions opt(writer.GetFontForFile("/home/gnat/Projects/pdf-writer-test/fonts/arial.ttf",0),12,AbstractContentContext::eRGB, 0);
-        Php::out << "HERE: " << __LINE__ << std::endl;
-        contentContext->WriteText(params[1],params[2],params[3],opt);
-        Php::out << "HERE: " << __LINE__ << std::endl;
-        */
+        return;
     }
 
     void writePdf()
     {
-//        if(modifiedPage != NULL) {
-//            modifiedPage->EndContentContext();
-//            modifiedPage->WritePage();
-//            delete modifiedPage;
-//        }
-
         writer.EndPDF();
-        Php::out << "HERE: " << __LINE__ << std::endl;
-
     }
 };
 
@@ -114,7 +122,20 @@ extern "C" {
         // static(!) Php::Extension object that should stay in memory
         // for the entire duration of the process (that's why it's static)
         static Php::Extension extension("pdf-writer", "0.1");
-        
+
+        Php::Namespace myNamespace("PDF");
+
+        Php::Class<PdfText> pdfText("PdfText");
+        pdfText.method<&PdfText::__construct>("__construct", {
+                    Php::ByVal("x", Php::Type::Numeric),
+                    Php::ByVal("y", Php::Type::Numeric),
+                    Php::ByVal("text", Php::Type::String)
+                    });
+        pdfText.method<&PdfText::getX>("getX");
+        pdfText.method<&PdfText::getY>("getY");
+        pdfText.method<&PdfText::getText>("getText");
+        pdfText.method<&PdfText::getText>("__toString");
+
         Php::Class<PdfWriter> pdfWriter("PdfWriter");
         pdfWriter.method<&PdfWriter::__construct>("__construct", {
                     Php::ByVal("inputFile", Php::Type::String),
@@ -122,14 +143,18 @@ extern "C" {
                     });
 
         pdfWriter.method<&PdfWriter::writeTextToPage>("writeTextToPage",{
-                Php::ByVal("x",Php::Type::Numeric),
-                Php::ByVal("y",Php::Type::Numeric),
-                Php::ByVal("text",Php::Type::String),
+                Php::ByVal("page",Php::Type::Numeric),
+                Php::ByVal("modifications",Php::Type::Array)
         });
 
 
         pdfWriter.method<&PdfWriter::writePdf>("save");
-        extension.add(pdfWriter);
+
+        myNamespace.add(pdfText);
+        myNamespace.add(pdfWriter);
+        extension.add(myNamespace);
+//        extension.add(pdfText);
+//        extension.add(pdfWriter);
 
         // return the extension
         return extension;
