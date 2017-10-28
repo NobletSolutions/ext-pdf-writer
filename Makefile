@@ -19,7 +19,7 @@
 #
 
 NAME				= pdf-writer
-
+VERSION	= 0.1
 
 #
 #	Php.ini directories
@@ -29,7 +29,7 @@ NAME				= pdf-writer
 #	one for each extension. Use this variable to specify this directory.
 #
 
-INI_DIR				=	/etc/php5/conf.d
+INI_DIR				=	/etc/php.d
 
 
 #
@@ -127,9 +127,11 @@ ${OBJECTS}:
 						${COMPILER} ${COMPILER_FLAGS} $@ ${@:%.o=%.cpp}
 
 install:		
-						${CP} ${EXTENSION} ${EXTENSION_DIR}
-						${CP} ${INI} ${INI_DIR}
+						${CP} ${EXTENSION} $(DESTDIR)/${EXTENSION_DIR}
+						${CP} ${INI} $(DESTDIR)/${INI_DIR}
 				
 clean:
 						${RM} ${EXTENSION} ${OBJECTS}
 
+dist: clean
+	tar --exclude-vcs-ignores --exclude-vcs --exclude=test.php --exclude=*tar.bz2 --transform 's,^\.,php-${NAME}-${VERSION},' -cjf ./php-${NAME}-${VERSION}.tar.bz2 .
